@@ -1,0 +1,74 @@
+[package]
+name = "openbook-candles"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "openbook_candles"
+path = "src/lib.rs"
+
+[[bin]]
+name = "worker"
+path = "src/worker/main.rs"
+
+[[bin]]
+name = "server"
+path = "src/server/main.rs"
+
+[[bin]]
+name = "backfill-trades"
+path = "src/backfill-trades/main.rs"
+
+[[bin]]
+name = "backfill-candles"
+path = "src/backfill-candles/main.rs"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+tokio-stream = "0.1"
+futures = "0.3.27"
+
+jsonrpc-core-client = { version = "18.0.0", features = ["ws", "http"] }
+
+deadpool-postgres = { version = "0.10.5", features = [ "rt_tokio_1", "serde" ] }
+tokio-postgres = { version = "0.7", features = ["with-chrono-0_4"] }
+postgres-native-tls = "0.5.0"
+native-tls = "0.2.11"
+chrono = "0.4.23"
+
+solana-client = "=1.14.13"
+solana-account-decoder = "=1.14.13"
+solana-transaction-status = "=1.14.13"
+solana-sdk = "=1.14.13"
+solana-rpc = "=1.14.13"
+spl-token = "3.5.0"
+anchor-client = "=0.26.0"
+borsh = "0.9"
+
+async-trait = "0.1"
+
+anyhow = "1.0"
+log = "0.4"
+dotenv = "0.15.0"
+env_logger = "0.10.0"
+serde = "1.0"
+serde_json = "1.0"
+serde_derive = "1.0"
+strum = { version = "0.24", features = ["derive"] }
+num-traits = "0.2"
+derive_more = "0.99.17"
+
+serum_dex = { version = "0.5.10", git = "https://github.com/openbook-dex/program.git", default-features=false, features = ["no-entrypoint", "program"] }
+anchor-lang = ">=0.25.0"
+
+actix-web = "4"
+actix-web-prom = { version = "0.6.0", git = "https://github.com/riordanp/actix-web-prom.git", branch = "exclude-paths" }
+
+arrayref = "0.3.6"
+bytemuck = "1.12.3"
+num_enum = "0.6.1"
+
+config = "0.13.1"
+prometheus = "0.13.3"
+lazy_static = "1.4.0"
+itertools = "0.11.0"
