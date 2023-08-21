@@ -6,10 +6,7 @@ use strum::IntoEnumIterator;
 
 use crate::{
     database::{
-        fetch::{
-            fetch_candles_from, fetch_earliest_candles,
-            fetch_latest_finished_candle,
-        },
+        fetch::{fetch_candles_from, fetch_earliest_candles, fetch_latest_finished_candle},
         insert::build_candles_upsert_statement,
     },
     structs::{

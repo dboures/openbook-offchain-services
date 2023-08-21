@@ -16,6 +16,8 @@ use crate::{
 
 use self::higher_order_candles::batch_higher_order_candles;
 
+use super::metrics::METRIC_CANDLES_TOTAL;
+
 pub async fn batch_for_market(pool: &Pool, market: &MarketInfo) -> anyhow::Result<()> {
     loop {
         let market_clone = market.clone();

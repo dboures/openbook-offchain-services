@@ -1,14 +1,18 @@
 use deadpool_postgres::Pool;
 
 use crate::{
-    structs::{candle::Candle, openbook::OpenBookFillEvent, transaction::PgTransaction},
+    structs::{
+        candle::Candle, openbook::OpenBookFillEvent, openbook_v2::OpenBookMarketMetadata,
+        transaction::PgTransaction,
+    },
     utils::{to_timestampz, AnyhowWrap},
 };
 
-pub async fn insert_fills_atomically(
+pub async fn insert_atomically(
     pool: &Pool,
     worker_id: i32,
     fills: Vec<OpenBookFillEvent>,
+    markets: Vec<OpenBookMarketMetadata>,
     signatures: Vec<String>,
 ) -> anyhow::Result<()> {
     let mut client = pool.get().await?;
@@ -25,7 +29,17 @@ pub async fn insert_fills_atomically(
             .unwrap();
     }
 
-    // 2. Update txns table as processed
+    // 2. Insert markets
+    if !markets.is_empty() {
+        let markets_statement = build_markets_insert_statement(markets);
+        db_txn
+            .execute(&markets_statement, &[])
+            .await
+            .map_err_anyhow()
+            .unwrap();
+    }
+
+    // 3. Update txns table as processed
     let transactions_statement =
         build_transactions_processed_update_statement(worker_id, signatures);
     db_txn
@@ -133,6 +147,37 @@ pub fn build_transactions_insert_statement(transactions: Vec<PgTransaction>) -> 
 
     let handle_conflict = "ON CONFLICT DO NOTHING";
 
+    stmt = format!("{} {}", stmt, handle_conflict);
+    stmt
+}
+
+fn build_markets_insert_statement(markets: Vec<OpenBookMarketMetadata>) -> String {
+    let mut stmt = String::from("INSERT INTO public.market_metadata
+    (creation_datetime, program_pk, market_pk, market_name, base_mint, quote_mint, base_decimals, quote_decimals, base_lot_size, quote_lot_size, scraper_active)
+    VALUES");
+    for (idx, market) in markets.iter().enumerate() {
+        let val_str = format!(
+            "(\'{}\', \'{}\', \'{}\', \'{}\', \'{}\', \'{}\', {}, {}, {}, {}, {})",
+            market.creation_datetime.to_rfc3339(),
+            market.program_pk,
+            market.market_pk,
+            market.market_name,
+            market.base_mint,
+            market.quote_mint,
+            market.base_decimals,
+            market.quote_decimals,
+            market.base_lot_size,
+            market.quote_lot_size,
+            false
+        );
+
+        if idx == 0 {
+            stmt = format!("{} {}", &stmt, val_str);
+        } else {
+            stmt = format!("{}, {}", &stmt, val_str);
+        }
+    }
+    let handle_conflict = "ON CONFLICT DO NOTHING";
     stmt = format!("{} {}", stmt, handle_conflict);
     stmt
 }

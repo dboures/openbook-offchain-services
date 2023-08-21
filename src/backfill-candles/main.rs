@@ -1,17 +1,13 @@
-
-
 use openbook_candles::{
-    database::{initialize::connect_to_database},
-    structs::{
-        markets::{fetch_market_infos, load_markets},
-    },
-    utils::{Config},
+    database::initialize::connect_to_database,
+    structs::markets::{fetch_market_infos, load_markets},
+    utils::Config,
     worker::candle_batching::{
-        higher_order_candles::backfill_batch_higher_order_candles, minute_candles::backfill_batch_1m_candles,
+        higher_order_candles::backfill_batch_higher_order_candles,
+        minute_candles::backfill_batch_1m_candles,
     },
 };
 use std::env;
-
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 10)]
 async fn main() -> anyhow::Result<()> {

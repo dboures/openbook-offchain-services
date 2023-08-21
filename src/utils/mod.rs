@@ -6,7 +6,7 @@ use solana_sdk::pubkey;
 
 use crate::structs::markets::MarketInfo;
 
-pub const OPENBOOK_KEY: Pubkey = pubkey!("srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX");
+pub const OPENBOOK_KEY: Pubkey = pubkey!("opnbkNkqux64GppQhwbyEVc3axhssFhVYuwar8rDHCu");
 
 pub trait AnyhowWrap {
     type Value;

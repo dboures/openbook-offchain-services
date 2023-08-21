@@ -68,8 +68,14 @@ pub async fn connect_to_database() -> anyhow::Result<Pool> {
 pub async fn setup_database(pool: &Pool) -> anyhow::Result<()> {
     let candles_table_fut = create_candles_table(pool);
     let transactions_table_fut = create_transactions_table(pool);
+    let market_metadata_fut = create_market_metadata_table(pool);
     let fills_table_fut = create_fills_table(pool);
-    let result = tokio::try_join!(candles_table_fut, transactions_table_fut, fills_table_fut);
+    let result = tokio::try_join!(
+        candles_table_fut,
+        transactions_table_fut,
+        fills_table_fut,
+        market_metadata_fut
+    );
     match result {
         Ok(_) => {
             println!("Successfully configured database");
@@ -105,7 +111,7 @@ pub async fn create_candles_table(pool: &Pool) -> anyhow::Result<()> {
         .await?;
 
     client.execute(
-        "CREATE UNIQUE INDEX IF NOT EXISTS idx_market_time_resolution ON openbook.candles USING btree (market_name, start_time, resolution);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_market_time_resolution ON candles USING btree (market_name, start_time, resolution);",
         &[]
     ).await?;
 
@@ -190,5 +196,30 @@ pub async fn create_transactions_table(pool: &Pool) -> anyhow::Result<()> {
         CREATE TABLE IF NOT EXISTS transactions_9 PARTITION OF transactions  FOR VALUES IN (9);"
     ).await?;
 
+    Ok(())
+}
+
+pub async fn create_market_metadata_table(pool: &Pool) -> anyhow::Result<()> {
+    let client = pool.get().await?;
+
+    client
+        .execute(
+            "CREATE TABLE if not exists market_metadata (
+                creation_datetime timestamptz NOT NULL,
+                program_pk text NOT NULL,
+                market_pk text NOT NULL,
+                market_name text NOT NULL,
+                base_mint text NOT NULL,
+                quote_mint text NOT NULL,
+                base_decimals int4 NOT NULL,
+                quote_decimals int4 NOT NULL,
+                base_lot_size int8 NOT NULL,
+                quote_lot_size int8 NOT NULL,
+                scraper_active bool NOT NULL,
+                CONSTRAINT market_meta_pk PRIMARY KEY (market_pk)
+            );",
+            &[],
+        )
+        .await?;
     Ok(())
 }

@@ -7,12 +7,12 @@ use openbook_candles::{
         initialize::{connect_to_database, setup_database},
         insert::build_transactions_insert_statement,
     },
+    scraper::scrape::scrape_transactions,
     structs::{
         markets::{fetch_market_infos, load_markets},
         transaction::{PgTransaction, NUM_TRANSACTION_PARTITIONS},
     },
     utils::{AnyhowWrap, Config, OPENBOOK_KEY},
-    worker::trade_fetching::scrape::scrape_fills,
 };
 use solana_client::{
     nonblocking::rpc_client::RpcClient, rpc_client::GetConfirmedSignaturesForAddress2Config,
@@ -61,7 +61,7 @@ async fn main() -> anyhow::Result<()> {
         let pool_clone = pool.clone();
         let markets_clone = target_markets.clone();
         handles.push(tokio::spawn(async move {
-            scrape_fills(id as i32, rpc_clone, &pool_clone, &markets_clone)
+            scrape_transactions(id as i32, rpc_clone, &pool_clone, &markets_clone)
                 .await
                 .unwrap();
         }));

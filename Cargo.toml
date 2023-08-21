@@ -12,6 +12,10 @@ name = "worker"
 path = "src/worker/main.rs"
 
 [[bin]]
+name = "scraper"
+path = "src/scraper/main.rs"
+
+[[bin]]
 name = "server"
 path = "src/server/main.rs"
 
@@ -36,13 +40,13 @@ postgres-native-tls = "0.5.0"
 native-tls = "0.2.11"
 chrono = "0.4.23"
 
-solana-client = "=1.14.13"
-solana-account-decoder = "=1.14.13"
-solana-transaction-status = "=1.14.13"
-solana-sdk = "=1.14.13"
-solana-rpc = "=1.14.13"
+solana-client = "=1.16.8"
+solana-account-decoder = "=1.16.8"
+solana-transaction-status = "=1.16.8"
+solana-sdk = "=1.16.8"
+solana-rpc = "=1.16.8"
 spl-token = "3.5.0"
-anchor-client = "=0.26.0"
+anchor-lang = { version = "=0.28.0", features = ["event-cpi"] }
 borsh = "0.9"
 
 async-trait = "0.1"
@@ -59,7 +63,6 @@ num-traits = "0.2"
 derive_more = "0.99.17"
 
 serum_dex = { version = "0.5.10", git = "https://github.com/openbook-dex/program.git", default-features=false, features = ["no-entrypoint", "program"] }
-anchor-lang = ">=0.25.0"
 
 actix-web = "4"
 actix-web-prom = { version = "0.6.0", git = "https://github.com/riordanp/actix-web-prom.git", branch = "exclude-paths" }
@@ -72,3 +75,4 @@ config = "0.13.1"
 prometheus = "0.13.3"
 lazy_static = "1.4.0"
 itertools = "0.11.0"
+bs58 = "0.5.0"

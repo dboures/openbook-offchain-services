@@ -15,7 +15,7 @@ use crate::{
         insert::build_candles_upsert_statement,
     },
     structs::{
-        candle::{Candle},
+        candle::Candle,
         markets::MarketInfo,
         openbook::{calculate_fill_price_and_size, PgOpenBookFill},
         resolution::{day, Resolution},
@@ -95,7 +95,7 @@ fn combine_fills_into_1m_candles(
         None => {
             let first = fills_iter.peek().unwrap();
             let (price, _) =
-                calculate_fill_price_and_size(**first, market.base_decimals, market.quote_decimals);
+                calculate_fill_price_and_size(*first, market.base_decimals, market.quote_decimals);
             price
         }
     };
@@ -109,7 +109,7 @@ fn combine_fills_into_1m_candles(
         while matches!(fills_iter.peek(), Some(f) if f.time < end_time) {
             let fill = fills_iter.next().unwrap();
             let (price, volume) =
-                calculate_fill_price_and_size(*fill, market.base_decimals, market.quote_decimals);
+                calculate_fill_price_and_size(fill, market.base_decimals, market.quote_decimals);
 
             candles[i].close = price;
             candles[i].low = f64_min(price, candles[i].low);

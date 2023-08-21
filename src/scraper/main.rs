@@ -1,16 +1,23 @@
 use log::{error, info};
+use openbook_candles::scraper::parsing::try_parse_new_market;
+use openbook_candles::scraper::scrape::{scrape_signatures, scrape_transactions};
 use openbook_candles::structs::markets::{fetch_market_infos, load_markets};
 use openbook_candles::structs::transaction::NUM_TRANSACTION_PARTITIONS;
 use openbook_candles::utils::Config;
 use openbook_candles::worker::metrics::{
     serve_metrics, METRIC_DB_POOL_AVAILABLE, METRIC_DB_POOL_SIZE,
 };
-use openbook_candles::worker::trade_fetching::scrape::{scrape_fills, scrape_signatures};
 use openbook_candles::{
     database::initialize::{connect_to_database, setup_database},
     worker::candle_batching::batch_for_market,
 };
+use solana_client::nonblocking::rpc_client::RpcClient;
+use solana_client::rpc_config::RpcTransactionConfig;
+use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::pubkey::Pubkey;
+use solana_sdk::signature::Signature;
+use solana_transaction_status::option_serializer::OptionSerializer;
+use solana_transaction_status::{UiInstruction, UiParsedInstruction};
 use std::env;
 use std::{collections::HashMap, str::FromStr, time::Duration as WaitDuration};
 
@@ -20,25 +27,21 @@ async fn main() -> anyhow::Result<()> {
     dotenv::dotenv().ok();
 
     let args: Vec<String> = env::args().collect();
-    assert!(args.len() == 2);
-    let path_to_markets_json = &args[1];
+    // assert!(args.len() == 2);
     let rpc_url: String = dotenv::var("RPC_URL").unwrap();
+
+    println!("{:?}", rpc_url);
 
     let config = Config {
         rpc_url: rpc_url.clone(),
     };
 
-    let markets = load_markets(path_to_markets_json);
-    let market_infos = fetch_market_infos(&config, markets.clone()).await?;
-    let mut target_markets = HashMap::new();
-    for m in market_infos.clone() {
-        target_markets.insert(Pubkey::from_str(&m.address)?, m.name);
-    }
-    info!("{:?}", target_markets);
-
     let pool = connect_to_database().await?;
     setup_database(&pool).await?;
     let mut handles = vec![];
+
+    // fetch markets
+    // let markets =
 
     // signature scraping
     let rpc_clone = rpc_url.clone();
@@ -47,38 +50,37 @@ async fn main() -> anyhow::Result<()> {
         scrape_signatures(rpc_clone, &pool_clone).await.unwrap();
     }));
 
-    // transaction/fill scraping
+    // transaction scraping
     for id in 0..NUM_TRANSACTION_PARTITIONS {
         let rpc_clone = rpc_url.clone();
         let pool_clone = pool.clone();
-        let markets_clone = target_markets.clone();
+        // let markets_clone = target_markets.clone();
         handles.push(tokio::spawn(async move {
-            scrape_fills(id as i32, rpc_clone, &pool_clone, &markets_clone)
+            scrape_transactions(id as i32, rpc_clone, &pool_clone, &HashMap::new()) // TODO
                 .await
                 .unwrap();
         }));
     }
 
-    // candle batching
-    for market in market_infos.into_iter() {
-        let batch_pool = pool.clone();
-        handles.push(tokio::spawn(async move {
-            batch_for_market(&batch_pool, &market).await.unwrap();
-            error!("batching halted for market {}", &market.name);
-        }));
-    }
+    // let rpc_client = RpcClient::new_with_commitment(rpc_url.clone(), CommitmentConfig::confirmed());
+    // let txn_config = RpcTransactionConfig {
+    //     encoding: None,
+    //     commitment: Some(CommitmentConfig::confirmed()),
+    //     max_supported_transaction_version: Some(0),
+    // };
+    // let s = Signature::from_str(
+    //     "rM3fb8WmCwTddptf4YPzqkXAGLvSetEt3xbuwLg3mLPR5XFBqWSKLNDkZ3mEfYr9amsoU5PRiBdujNxjxMbRZVK",
+    // )
+    // .unwrap();
+    // println!("{:?}", s);
+    // let x = rpc_client
+    //     .get_transaction_with_config(&s, txn_config)
+    //     .await
+    //     .unwrap();
 
-    let monitor_pool = pool.clone();
-    handles.push(tokio::spawn(async move {
-        // TODO: maybe break this out into a new function
-        loop {
-            let pool_status = monitor_pool.status();
-            METRIC_DB_POOL_AVAILABLE.set(pool_status.available as i64);
-            METRIC_DB_POOL_SIZE.set(pool_status.size as i64);
-
-            tokio::time::sleep(WaitDuration::from_secs(10)).await;
-        }
-    }));
+    // let m = x.transaction.meta.unwrap();
+    // let goo = try_parse_new_market(&m, 1);
+    // print!("{:?}", goo);
 
     handles.push(tokio::spawn(async move {
         // TODO: this is ugly af

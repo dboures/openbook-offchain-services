@@ -1,4 +1,4 @@
-use anchor_lang::{event, AnchorDeserialize, AnchorSerialize};
+use anchor_lang::prelude::*;
 use chrono::{DateTime, Utc};
 use num_traits::Pow;
 use solana_sdk::pubkey::Pubkey;
@@ -21,10 +21,79 @@ impl PgOpenBookFill {
             market_key: row.get(1),
             bid: row.get(2),
             maker: row.get(3),
-            price: row.get(4),
-            size: row.get(5),
+            // price: row.get(4),
+            // size: row.get(5),
+            native_qty_paid: 0.0,
+            native_qty_received: 0.0,
+            native_fee_or_rebate: 0.0,
         }
     }
+}
+
+#[event]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct OpenBookFillEventRaw {
+    pub market: Pubkey,
+    pub open_orders: Pubkey,
+    pub open_orders_owner: Pubkey,
+    pub bid: bool,
+    pub maker: bool,
+    pub native_qty_paid: u64,
+    pub native_qty_received: u64,
+    pub native_fee_or_rebate: u64,
+    pub order_id: u128,
+    pub owner_slot: u8,
+    pub fee_tier: u8,
+    pub client_order_id: Option<u64>,
+    pub referrer_rebate: Option<u64>,
+}
+impl OpenBookFillEventRaw {
+    pub fn into_event(
+        self,
+        signature: String,
+        block_time: i64,
+        log_index: usize,
+    ) -> OpenBookFillEvent {
+        OpenBookFillEvent {
+            signature,
+            market: self.market,
+            open_orders: self.open_orders,
+            open_orders_owner: self.open_orders_owner,
+            bid: self.bid,
+            maker: self.maker,
+            native_qty_paid: self.native_qty_paid,
+            native_qty_received: self.native_qty_received,
+            native_fee_or_rebate: self.native_fee_or_rebate,
+            order_id: self.order_id,
+            owner_slot: self.owner_slot,
+            fee_tier: self.fee_tier,
+            client_order_id: self.client_order_id,
+            referrer_rebate: self.referrer_rebate,
+            block_time,
+            log_index,
+        }
+    }
+}
+
+#[event]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct OpenBookFillEvent {
+    pub signature: String,
+    pub market: Pubkey,
+    pub open_orders: Pubkey,
+    pub open_orders_owner: Pubkey,
+    pub bid: bool,
+    pub maker: bool,
+    pub native_qty_paid: u64,
+    pub native_qty_received: u64,
+    pub native_fee_or_rebate: u64,
+    pub order_id: u128,
+    pub owner_slot: u8,
+    pub fee_tier: u8,
+    pub client_order_id: Option<u64>,
+    pub referrer_rebate: Option<u64>,
+    pub block_time: i64,
+    pub log_index: usize,
 }
 
 #[derive(Copy, Clone, AnchorDeserialize)]
@@ -83,7 +152,7 @@ pub struct MarketState {
 }
 
 pub fn calculate_fill_price_and_size(
-    fill: PgOpenBookFill,
+    fill: &PgOpenBookFill,
     base_decimals: u8,
     quote_decimals: u8,
 ) -> (f64, f64) {
