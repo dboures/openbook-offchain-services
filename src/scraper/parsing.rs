@@ -1,6 +1,5 @@
 use log::warn;
 use solana_client::client_error::Result as ClientResult;
-use solana_sdk::pubkey::Pubkey;
 use solana_transaction_status::{
     option_serializer::OptionSerializer, EncodedConfirmedTransactionWithStatusMeta, UiInstruction,
     UiParsedInstruction, UiTransactionStatusMeta,
@@ -8,10 +7,7 @@ use solana_transaction_status::{
 use std::{collections::HashMap, io::Error};
 
 use crate::{
-    structs::{
-        openbook::{OpenBookFillEvent, OpenBookFillEventRaw},
-        openbook_v2::{MarketMetaDataLog, OpenBookMarketMetadata},
-    },
+    structs::openbook_v2::{FillLog, MarketMetaDataLog, OpenBookFill, OpenBookMarketMetadata},
     utils::to_timestampz,
     worker::metrics::METRIC_RPC_ERRORS_TOTAL,
 };
@@ -21,13 +17,9 @@ const PROGRAM_DATA: &str = "Program data: ";
 pub fn parse_openbook_txns(
     txns: &mut Vec<ClientResult<EncodedConfirmedTransactionWithStatusMeta>>,
     mut sig_strings: Vec<String>,
-    target_markets: &HashMap<Pubkey, String>,
-) -> (
-    Vec<OpenBookFillEvent>,
-    Vec<OpenBookMarketMetadata>,
-    Vec<String>,
-) {
-    let mut fills_vector = Vec::<OpenBookFillEvent>::new();
+    target_markets: &HashMap<String, OpenBookMarketMetadata>,
+) -> (Vec<OpenBookFill>, Vec<OpenBookMarketMetadata>, Vec<String>) {
+    let mut fills_vector = Vec::<OpenBookFill>::new();
     let mut markets_vector = Vec::<OpenBookMarketMetadata>::new();
     let mut failed_sigs = vec![];
     for (idx, txn) in txns.iter_mut().enumerate() {
@@ -40,8 +32,8 @@ pub fn parse_openbook_txns(
                             match try_parse_openbook_fills_from_logs(
                                 logs,
                                 target_markets,
-                                sig_strings[idx].clone(),
                                 t.block_time.unwrap(),
+                                t.slot,
                             ) {
                                 Some(mut events) => fills_vector.append(&mut events),
                                 None => {}
@@ -69,14 +61,14 @@ pub fn parse_openbook_txns(
     (fills_vector, markets_vector, sig_strings)
 }
 
-fn try_parse_openbook_fills_from_logs(
+pub fn try_parse_openbook_fills_from_logs(
     logs: &Vec<String>,
-    target_markets: &HashMap<Pubkey, String>,
-    signature: String,
+    target_markets: &HashMap<String, OpenBookMarketMetadata>,
     block_time: i64,
-) -> Option<Vec<OpenBookFillEvent>> {
-    let mut fills_vector = Vec::<OpenBookFillEvent>::new();
-    for (idx, l) in logs.iter().enumerate() {
+    slot: u64,
+) -> Option<Vec<OpenBookFill>> {
+    let mut fills_vector = Vec::<OpenBookFill>::new();
+    for l in logs.iter() {
         match l.strip_prefix(PROGRAM_DATA) {
             Some(log) => {
                 let borsh_bytes = match anchor_lang::__private::base64::decode(log) {
@@ -84,13 +76,20 @@ fn try_parse_openbook_fills_from_logs(
                     _ => continue,
                 };
                 let mut slice: &[u8] = &borsh_bytes[8..];
-                let event: Result<OpenBookFillEventRaw, Error> =
+                let fill_log: Result<FillLog, Error> =
                     anchor_lang::AnchorDeserialize::deserialize(&mut slice);
 
-                match event {
-                    Ok(e) => {
-                        let fill_event = e.into_event(signature.clone(), block_time, idx);
-                        if target_markets.contains_key(&fill_event.market) {
+                match fill_log {
+                    Ok(f) => {
+                        if target_markets.contains_key(&f.market.to_string()) {
+                            let market_metadata =
+                                target_markets.get(&f.market.to_string()).unwrap();
+                            let fill_event = OpenBookFill::from_log(
+                                f,
+                                market_metadata,
+                                slot,
+                                to_timestampz(block_time as u64),
+                            );
                             fills_vector.push(fill_event);
                         }
                     }
@@ -108,7 +107,7 @@ fn try_parse_openbook_fills_from_logs(
     }
 }
 
-pub fn try_parse_new_market(
+fn try_parse_new_market(
     txn_meta: &UiTransactionStatusMeta,
     block_time: i64,
 ) -> Option<Vec<OpenBookMarketMetadata>> {

@@ -2,6 +2,7 @@ use crate::structs::{
     candle::Candle,
     coingecko::{PgCoinGecko24HighLow, PgCoinGecko24HourVolume},
     openbook::PgOpenBookFill,
+    openbook_v2::OpenBookMarketMetadata,
     resolution::Resolution,
     trader::PgTrader,
     transaction::PgTransaction,
@@ -14,7 +15,7 @@ pub async fn fetch_earliest_fill(
     market_address_string: &str,
 ) -> anyhow::Result<Option<PgOpenBookFill>> {
     let client = pool.get().await?;
-// TODO: reevaluate
+    // TODO: reevaluate
     let stmt = r#"SELECT 
         block_datetime as "time",
         market as "market_key",
@@ -42,7 +43,7 @@ pub async fn fetch_fills_from(
     end_time: DateTime<Utc>,
 ) -> anyhow::Result<Vec<PgOpenBookFill>> {
     let client = pool.get().await?;
-// TODO: reevaluate
+    // TODO: reevaluate
     let stmt = r#"SELECT 
          block_datetime as "time",
          market as "market_key",
@@ -337,4 +338,31 @@ pub async fn fetch_worker_transactions(
     let rows = client.query(stmt, &[&worker_id]).await?;
 
     Ok(rows.into_iter().map(PgTransaction::from_row).collect())
+}
+
+pub async fn fetch_active_markets(pool: &Pool) -> anyhow::Result<Vec<OpenBookMarketMetadata>> {
+    let client = pool.get().await?;
+
+    let stmt = r#"
+    SELECT 
+        creation_datetime, 
+        program_pk, 
+        market_pk, 
+        market_name, 
+        base_mint, 
+        quote_mint, 
+        base_decimals, 
+        quote_decimals, 
+        base_lot_size, 
+        quote_lot_size, 
+        scraper_active
+    FROM public.market_metadata
+        where scraper_active = true"#;
+
+    let rows = client.query(stmt, &[]).await?;
+
+    Ok(rows
+        .into_iter()
+        .map(OpenBookMarketMetadata::from_row)
+        .collect())
 }

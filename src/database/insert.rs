@@ -2,16 +2,17 @@ use deadpool_postgres::Pool;
 
 use crate::{
     structs::{
-        candle::Candle, openbook::OpenBookFillEvent, openbook_v2::OpenBookMarketMetadata,
+        candle::Candle,
+        openbook_v2::{OpenBookFill, OpenBookMarketMetadata},
         transaction::PgTransaction,
     },
-    utils::{to_timestampz, AnyhowWrap},
+    utils::AnyhowWrap,
 };
 
 pub async fn insert_atomically(
     pool: &Pool,
     worker_id: i32,
-    fills: Vec<OpenBookFillEvent>,
+    fills: Vec<OpenBookFill>,
     markets: Vec<OpenBookMarketMetadata>,
     signatures: Vec<String>,
 ) -> anyhow::Result<()> {
@@ -53,24 +54,26 @@ pub async fn insert_atomically(
     Ok(())
 }
 
-fn build_fills_upsert_statement(fills: Vec<OpenBookFillEvent>) -> String {
-    let mut stmt = String::from("INSERT INTO fills (signature, time, market, open_orders, open_orders_owner, bid, maker, native_qty_paid, native_qty_received, native_fee_or_rebate, fee_tier, order_id, log_index) VALUES");
+pub fn build_fills_upsert_statement(fills: Vec<OpenBookFill>) -> String {
+    let mut stmt = String::from("INSERT INTO fills (block_datetime, slot, market_pk, seq_num, maker, maker_client_order_id, maker_fee, maker_datetime, taker, taker_client_order_id, taker_fee, maker_slot, maker_out, price, quantity) VALUES");
     for (idx, fill) in fills.iter().enumerate() {
         let val_str = format!(
-            "(\'{}\', \'{}\', \'{}\', \'{}\', \'{}\', {}, {}, {}, {}, {}, {}, {}, {})",
-            fill.signature,
-            to_timestampz(fill.block_time as u64).to_rfc3339(),
-            fill.market,
-            fill.open_orders,
-            fill.open_orders_owner,
-            fill.bid,
+            "(\'{}\', {}, \'{}\', {}, \'{}\', \'{}\', {}, \'{}\', \'{}\', \'{}\', {}, {}, {}, {}, {})",
+            fill.block_datetime.to_rfc3339(),
+            fill.slot,
+            fill.market_pk,
+            fill.seq_num,
             fill.maker,
-            fill.native_qty_paid,
-            fill.native_qty_received,
-            fill.native_fee_or_rebate,
-            fill.fee_tier,
-            fill.order_id,
-            fill.log_index,
+            fill.maker_client_order_id,
+            fill.maker_fee,
+            fill.maker_datetime.to_rfc3339(),
+            fill.taker,
+            fill.taker_client_order_id,
+            fill.taker_fee,
+            fill.maker_slot,
+            fill.maker_out,
+            fill.price,
+            fill.quantity
         );
 
         if idx == 0 {

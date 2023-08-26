@@ -14,7 +14,7 @@ use crate::{
         fetch::fetch_worker_transactions,
         insert::{build_transactions_insert_statement, insert_atomically},
     },
-    structs::transaction::PgTransaction,
+    structs::{openbook_v2::OpenBookMarketMetadata, transaction::PgTransaction},
     utils::{AnyhowWrap, OPENBOOK_KEY},
     worker::metrics::{METRIC_FILLS_TOTAL, METRIC_RPC_ERRORS_TOTAL, METRIC_TRANSACTIONS_TOTAL},
 };
@@ -70,7 +70,7 @@ pub async fn scrape_transactions(
     worker_id: i32,
     rpc_url: String,
     pool: &Pool,
-    target_markets: &HashMap<Pubkey, String>,
+    target_markets: &HashMap<String, OpenBookMarketMetadata>,
 ) -> anyhow::Result<()> {
     debug!("Scraper {} started \n", worker_id);
     let rpc_client = RpcClient::new_with_commitment(rpc_url, CommitmentConfig::confirmed());
@@ -110,8 +110,10 @@ pub async fn scrape_transactions(
         let (fills, new_markets, completed_sigs) =
             parse_openbook_txns(&mut txns, sig_strings, target_markets);
         for fill in fills.iter() {
-            let market_name = target_markets.get(&fill.market).unwrap();
-            METRIC_FILLS_TOTAL.with_label_values(&[market_name]).inc();
+            let market_metadata = target_markets.get(&fill.market_pk).unwrap();
+            METRIC_FILLS_TOTAL
+                .with_label_values(&[&market_metadata.market_name])
+                .inc();
         }
         // Write to the database, and update properly fetched transactions as processed
         insert_atomically(pool, worker_id, fills, new_markets, completed_sigs).await?;
