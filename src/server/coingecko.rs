@@ -3,7 +3,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::server_error::ServerError;
 use actix_web::{get, web, HttpResponse, Scope};
 use futures::join;
-use openbook_candles::{
+use openbook_offchain_services::{
     database::fetch::{fetch_coingecko_24h_high_low, fetch_coingecko_24h_volume},
     structs::{
         coingecko::{

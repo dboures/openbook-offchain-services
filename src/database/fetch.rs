@@ -1,8 +1,7 @@
 use crate::structs::{
     candle::Candle,
     coingecko::{PgCoinGecko24HighLow, PgCoinGecko24HourVolume},
-    openbook::PgOpenBookFill,
-    openbook_v2::OpenBookMarketMetadata,
+    openbook_v2::{OpenBookMarketMetadata, OpenBookFill},
     resolution::Resolution,
     trader::PgTrader,
     transaction::PgTransaction,
@@ -13,25 +12,33 @@ use deadpool_postgres::{GenericClient, Pool};
 pub async fn fetch_earliest_fill(
     pool: &Pool,
     market_address_string: &str,
-) -> anyhow::Result<Option<PgOpenBookFill>> {
+) -> anyhow::Result<Option<OpenBookFill>> {
     let client = pool.get().await?;
-    // TODO: reevaluate
     let stmt = r#"SELECT 
-        block_datetime as "time",
-        market as "market_key",
-        bid as "bid",
+        block_datetime as "block_datetime",
+        slot as "slot",
+        market_pk as "market_pk",
+        seq_num as "seq_num",
         maker as "maker",
+        maker_client_order_id as "maker_client_order_id",
+        maker_fee as "maker_fee",
+        maker_datetime as "maker_datetime",
+        taker as "taker",
+        taker_client_order_id as "taker_client_order_id",
+        taker_fee as "taker_fee",
+        taker_side as "taker_side",
+        maker_slot as "maker_slot",
+        maker_out as "maker_out",
         price as "price",
-        size as "size"
-        from openbook.openbook_fill_events 
-        where market = $1 
-        and maker = true
-        ORDER BY time asc LIMIT 1"#;
+        quantity as "quantity"
+        from fills
+        where market_pk = $1
+        ORDER BY block_datetime asc LIMIT 1"#;
 
     let row = client.query_opt(stmt, &[&market_address_string]).await?;
 
     match row {
-        Some(r) => Ok(Some(PgOpenBookFill::from_row(r))),
+        Some(r) => Ok(Some(OpenBookFill::from_row(r))),
         None => Ok(None),
     }
 }
@@ -41,27 +48,36 @@ pub async fn fetch_fills_from(
     market_address_string: &str,
     start_time: DateTime<Utc>,
     end_time: DateTime<Utc>,
-) -> anyhow::Result<Vec<PgOpenBookFill>> {
+) -> anyhow::Result<Vec<OpenBookFill>> {
     let client = pool.get().await?;
     // TODO: reevaluate
     let stmt = r#"SELECT 
-         block_datetime as "time",
-         market as "market_key",
-         bid as "bid",
-         maker as "maker",
-         price as "price",
-         size as "size"
-         from openbook.openbook_fill_events 
-         where market = $1
-         and time >= $2::timestamptz
-         and time < $3::timestamptz
-         and maker = true
-         ORDER BY time asc"#;
+        block_datetime as "block_datetime",
+        slot as "slot",
+        market_pk as "market_pk",
+        seq_num as "seq_num",
+        maker as "maker",
+        maker_client_order_id as "maker_client_order_id",
+        maker_fee as "maker_fee",
+        maker_datetime as "maker_datetime",
+        taker as "taker",
+        taker_client_order_id as "taker_client_order_id",
+        taker_fee as "taker_fee",
+        taker_side as "taker_side",
+        maker_slot as "maker_slot",
+        maker_out as "maker_out",
+        price as "price",
+        quantity as "quantity"
+        from fills 
+         where market_pk = $1
+         and block_datetime >= $2::timestamptz
+         and block_datetime < $3::timestamptz
+         ORDER BY block_datetime asc"#;
 
     let rows = client
         .query(stmt, &[&market_address_string, &start_time, &end_time])
         .await?;
-    Ok(rows.into_iter().map(PgOpenBookFill::from_row).collect())
+    Ok(rows.into_iter().map(OpenBookFill::from_row).collect())
 }
 
 pub async fn fetch_latest_finished_candle(
@@ -173,7 +189,7 @@ pub async fn fetch_candles_from(
     Ok(rows.into_iter().map(Candle::from_row).collect())
 }
 
-pub async fn fetch_top_traders_by_base_volume_from(
+pub async fn fetch_top_traders_by_base_volume_from( //TODO
     pool: &Pool,
     market_address_string: &str,
     start_time: DateTime<Utc>,
@@ -208,7 +224,7 @@ pub async fn fetch_top_traders_by_base_volume_from(
     Ok(rows.into_iter().map(PgTrader::from_row).collect())
 }
 
-pub async fn fetch_top_traders_by_quote_volume_from(
+pub async fn fetch_top_traders_by_quote_volume_from( //TODO
     pool: &Pool,
     market_address_string: &str,
     start_time: DateTime<Utc>,
@@ -243,7 +259,7 @@ pub async fn fetch_top_traders_by_quote_volume_from(
     Ok(rows.into_iter().map(PgTrader::from_row).collect())
 }
 
-pub async fn fetch_coingecko_24h_volume(
+pub async fn fetch_coingecko_24h_volume( //TODO
     pool: &Pool,
     market_address_strings: &Vec<&str>,
 ) -> anyhow::Result<Vec<PgCoinGecko24HourVolume>> {
@@ -274,7 +290,7 @@ pub async fn fetch_coingecko_24h_volume(
         .collect())
 }
 
-pub async fn fetch_coingecko_24h_high_low(
+pub async fn fetch_coingecko_24h_high_low( //TODO
     pool: &Pool,
     market_names: &Vec<&str>,
 ) -> anyhow::Result<Vec<PgCoinGecko24HighLow>> {

@@ -127,8 +127,8 @@ impl OpenBookFill {
 
     pub fn from_row(row: Row) -> Self {
         let slot_raw = row.get::<usize, i32>(1);
-        let seq_num_raw = row.get::<usize, i32>(3);
-        let maker_client_order_id_raw: String = row.get(4);
+        let seq_num_raw: i32 = row.get(3);
+        let maker_client_order_id_raw: String = row.get(5);
         let taker_client_order_id_raw: String = row.get(9);
         let taker_side_raw = row.get::<usize, i32>(11);
         let maker_slot_raw = row.get::<usize, i32>(12);

@@ -55,10 +55,10 @@ pub async fn insert_atomically(
 }
 
 pub fn build_fills_upsert_statement(fills: Vec<OpenBookFill>) -> String {
-    let mut stmt = String::from("INSERT INTO fills (block_datetime, slot, market_pk, seq_num, maker, maker_client_order_id, maker_fee, maker_datetime, taker, taker_client_order_id, taker_fee, maker_slot, maker_out, price, quantity) VALUES");
+    let mut stmt = String::from("INSERT INTO fills (block_datetime, slot, market_pk, seq_num, maker, maker_client_order_id, maker_fee, maker_datetime, taker, taker_client_order_id, taker_fee, taker_side, maker_slot, maker_out, price, quantity) VALUES");
     for (idx, fill) in fills.iter().enumerate() {
         let val_str = format!(
-            "(\'{}\', {}, \'{}\', {}, \'{}\', \'{}\', {}, \'{}\', \'{}\', \'{}\', {}, {}, {}, {}, {})",
+            "(\'{}\', {}, \'{}\', {}, \'{}\', \'{}\', {}, \'{}\', \'{}\', \'{}\', {}, {}, {}, {}, {}, {})",
             fill.block_datetime.to_rfc3339(),
             fill.slot,
             fill.market_pk,
@@ -70,6 +70,7 @@ pub fn build_fills_upsert_statement(fills: Vec<OpenBookFill>) -> String {
             fill.taker,
             fill.taker_client_order_id,
             fill.taker_fee,
+            fill.taker_side,
             fill.maker_slot,
             fill.maker_out,
             fill.price,

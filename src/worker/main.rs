@@ -1,12 +1,14 @@
 use log::{error, info};
-use openbook_candles::scraper::scrape::{scrape_signatures, scrape_transactions};
-use openbook_candles::structs::markets::{fetch_market_infos, load_markets};
-use openbook_candles::structs::transaction::NUM_TRANSACTION_PARTITIONS;
-use openbook_candles::utils::Config;
-use openbook_candles::worker::metrics::{
+use openbook_offchain_services::database::fetch::fetch_active_markets;
+use openbook_offchain_services::scraper::scrape::{scrape_signatures, scrape_transactions};
+use openbook_offchain_services::structs::markets::{fetch_market_infos, load_markets};
+use openbook_offchain_services::structs::openbook_v2::OpenBookMarketMetadata;
+use openbook_offchain_services::structs::transaction::NUM_TRANSACTION_PARTITIONS;
+use openbook_offchain_services::utils::Config;
+use openbook_offchain_services::worker::metrics::{
     serve_metrics, METRIC_DB_POOL_AVAILABLE, METRIC_DB_POOL_SIZE,
 };
-use openbook_candles::{
+use openbook_offchain_services::{
     database::initialize::{connect_to_database, setup_database},
     worker::candle_batching::batch_for_market,
 };
@@ -19,25 +21,16 @@ async fn main() -> anyhow::Result<()> {
     env_logger::init();
     dotenv::dotenv().ok();
 
-    let args: Vec<String> = env::args().collect();
-    assert!(args.len() == 2);
-    let path_to_markets_json = &args[1];
     let rpc_url: String = dotenv::var("RPC_URL").unwrap();
-
-    let config = Config {
-        rpc_url: rpc_url.clone(),
-    };
-
-    let markets = load_markets(path_to_markets_json);
-    let market_infos = fetch_market_infos(&config, markets.clone()).await?;
-    let mut target_markets = HashMap::new();
-    for m in market_infos.clone() {
-        target_markets.insert(Pubkey::from_str(&m.address)?, m.name);
-    }
-    info!("{:?}", target_markets);
-
     let pool = connect_to_database().await?;
     setup_database(&pool).await?;
+
+    let markets = fetch_active_markets(&pool).await?;
+    let target_markets: HashMap<String, OpenBookMarketMetadata> = markets
+        .into_iter()
+        .map(|m| (m.market_pk.clone(), m))
+        .collect();
+    info!("{:?}", target_markets);
     let mut handles = vec![];
 
     // signature scraping
@@ -60,17 +53,17 @@ async fn main() -> anyhow::Result<()> {
     }
 
     // candle batching
-    for market in market_infos.into_iter() {
+    let cloned_markets = target_markets.clone();
+    for (_, market) in cloned_markets.into_iter() {
         let batch_pool = pool.clone();
         handles.push(tokio::spawn(async move {
             batch_for_market(&batch_pool, &market).await.unwrap();
-            error!("batching halted for market {}", &market.name);
+            error!("batching halted for market {}", &market.market_name);
         }));
     }
 
     let monitor_pool = pool.clone();
     handles.push(tokio::spawn(async move {
-        // TODO: maybe break this out into a new function
         loop {
             let pool_status = monitor_pool.status();
             METRIC_DB_POOL_AVAILABLE.set(pool_status.available as i64);
@@ -81,7 +74,6 @@ async fn main() -> anyhow::Result<()> {
     }));
 
     handles.push(tokio::spawn(async move {
-        // TODO: this is ugly af
         serve_metrics().await.unwrap().await.unwrap();
     }));
 

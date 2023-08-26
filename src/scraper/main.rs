@@ -1,16 +1,16 @@
 
-use openbook_candles::database::fetch::fetch_active_markets;
+use openbook_offchain_services::database::fetch::fetch_active_markets;
 
 
-use openbook_candles::scraper::scrape::{scrape_signatures, scrape_transactions};
+use openbook_offchain_services::scraper::scrape::{scrape_signatures, scrape_transactions};
 
-use openbook_candles::structs::openbook_v2::OpenBookMarketMetadata;
-use openbook_candles::structs::transaction::NUM_TRANSACTION_PARTITIONS;
+use openbook_offchain_services::structs::openbook_v2::OpenBookMarketMetadata;
+use openbook_offchain_services::structs::transaction::NUM_TRANSACTION_PARTITIONS;
 
-use openbook_candles::worker::metrics::{
+use openbook_offchain_services::worker::metrics::{
     serve_metrics,
 };
-use openbook_candles::{
+use openbook_offchain_services::{
     database::initialize::{connect_to_database, setup_database},
 };
 
@@ -22,14 +22,12 @@ async fn main() -> anyhow::Result<()> {
     dotenv::dotenv().ok();
 
     let rpc_url: String = dotenv::var("RPC_URL").unwrap();
-
     let pool = connect_to_database().await?;
     setup_database(&pool).await?;
     let mut handles = vec![];
 
     // fetch markets
     let markets = fetch_active_markets(&pool).await?;
-
     let target_markets: HashMap<String, OpenBookMarketMetadata> = markets
         .into_iter()
         .map(|m| (m.market_pk.clone(), m))

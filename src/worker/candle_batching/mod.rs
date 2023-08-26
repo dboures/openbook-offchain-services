@@ -9,7 +9,7 @@ use tokio::time::sleep;
 
 use crate::{
     database::insert::build_candles_upsert_statement,
-    structs::{candle::Candle, markets::MarketInfo, resolution::Resolution},
+    structs::{candle::Candle, resolution::Resolution, openbook_v2::OpenBookMarketMetadata},
     utils::AnyhowWrap,
     worker::candle_batching::minute_candles::batch_1m_candles,
 };
@@ -18,7 +18,7 @@ use self::higher_order_candles::batch_higher_order_candles;
 
 use super::metrics::METRIC_CANDLES_TOTAL;
 
-pub async fn batch_for_market(pool: &Pool, market: &MarketInfo) -> anyhow::Result<()> {
+pub async fn batch_for_market(pool: &Pool, market: &OpenBookMarketMetadata) -> anyhow::Result<()> {
     loop {
         let market_clone = market.clone();
         loop {
@@ -28,25 +28,25 @@ pub async fn batch_for_market(pool: &Pool, market: &MarketInfo) -> anyhow::Resul
                 Err(e) => {
                     error!(
                         "Batching thread failed for {:?} with error: {:?}",
-                        market_clone.name.clone(),
+                        market_clone.market_name.clone(),
                         e
                     );
                     break;
                 }
             };
         }
-        warn!("Restarting {:?} batching thread", market.name);
+        warn!("Restarting {:?} batching thread", market.market_name);
     }
 }
 
-async fn batch_inner(pool: &Pool, market: &MarketInfo) -> anyhow::Result<()> {
-    let market_name = &market.name.clone();
+async fn batch_inner(pool: &Pool, market: &OpenBookMarketMetadata) -> anyhow::Result<()> {
+    let market_name = &market.market_name.clone();
     let candles = batch_1m_candles(pool, market).await?;
     if candles.is_empty() {
         return Ok(());
     }
     METRIC_CANDLES_TOTAL
-        .with_label_values(&[market.name.as_str()])
+        .with_label_values(&[market.market_name.as_str()])
         .inc_by(candles.clone().len() as u64);
     save_candles(pool, candles).await?;
     for resolution in Resolution::iter() {

@@ -8,7 +8,7 @@ use prometheus::{
 
 lazy_static! {
     static ref METRIC_REGISTRY: Registry =
-        Registry::new_custom(Some("openbook_candles_worker".to_string()), None).unwrap();
+        Registry::new_custom(Some("openbook_offchain_services_worker".to_string()), None).unwrap();
     pub static ref METRIC_TXS_TOTAL: IntCounterVec = register_int_counter_vec_with_registry!(
         "txs_total",
         "Total number of transactions scraped",
@@ -59,7 +59,7 @@ lazy_static! {
 }
 
 pub async fn serve_metrics() -> anyhow::Result<Server> {
-    let metrics = PrometheusMetricsBuilder::new("openbook_candles_worker")
+    let metrics = PrometheusMetricsBuilder::new("openbook_offchain_services_worker")
         .registry(METRIC_REGISTRY.clone())
         .exclude("/metrics")
         .exclude_status(StatusCode::NOT_FOUND)

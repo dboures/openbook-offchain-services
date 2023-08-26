@@ -1,5 +1,5 @@
 use crate::server_error::ServerError;
-use openbook_candles::{
+use openbook_offchain_services::{
     database::fetch::{
         fetch_top_traders_by_base_volume_from, fetch_top_traders_by_quote_volume_from,
     },

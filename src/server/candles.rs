@@ -1,4 +1,4 @@
-use openbook_candles::{
+use openbook_offchain_services::{
     database::fetch::fetch_candles_from,
     structs::{markets::valid_market, resolution::Resolution, tradingview::TvResponse},
     utils::{to_timestampz, WebContext},

@@ -144,6 +144,7 @@ pub async fn create_fills_table(pool: &Pool) -> anyhow::Result<()> {
             taker text not null,
             taker_client_order_id text not null,
             taker_fee double precision not null,
+            taker_side int4 not null,
             maker_slot int4 not null,
             maker_out bool not null,
             price double precision not null,

@@ -10,7 +10,7 @@ use candles::get_candles;
 use prometheus::Registry;
 
 use markets::get_markets;
-use openbook_candles::{
+use openbook_offchain_services::{
     database::initialize::connect_to_database,
     structs::markets::{fetch_market_infos, load_markets},
     utils::{Config, WebContext},
@@ -46,7 +46,7 @@ async fn main() -> std::io::Result<()> {
 
     let registry = Registry::new();
     // For serving metrics on a private port
-    let private_metrics = PrometheusMetricsBuilder::new("openbook_candles_server_private")
+    let private_metrics = PrometheusMetricsBuilder::new("openbook_offchain_services_server_private")
         .registry(registry.clone())
         .exclude("/metrics")
         .exclude_status(StatusCode::NOT_FOUND)
@@ -54,7 +54,7 @@ async fn main() -> std::io::Result<()> {
         .build()
         .unwrap();
     // For collecting metrics on the public api, excluding 404s
-    let public_metrics = PrometheusMetricsBuilder::new("openbook_candles_server")
+    let public_metrics = PrometheusMetricsBuilder::new("openbook_offchain_services_server")
         .registry(registry)
         .exclude_status(StatusCode::NOT_FOUND)
         .build()
