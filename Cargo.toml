@@ -1,10 +1,10 @@
 [package]
-name = "openbook-candles"
+name = "openbook-offchain-services"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "openbook_candles"
+name = "openbook_offchain_services"
 path = "src/lib.rs"
 
 [[bin]]
@@ -18,14 +18,6 @@ path = "src/scraper/main.rs"
 [[bin]]
 name = "server"
 path = "src/server/main.rs"
-
-[[bin]]
-name = "backfill-trades"
-path = "src/backfill-trades/main.rs"
-
-[[bin]]
-name = "backfill-candles"
-path = "src/backfill-candles/main.rs"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
@@ -61,8 +53,6 @@ serde_derive = "1.0"
 strum = { version = "0.24", features = ["derive"] }
 num-traits = "0.2"
 derive_more = "0.99.17"
-
-serum_dex = { version = "0.5.10", git = "https://github.com/openbook-dex/program.git", default-features=false, features = ["no-entrypoint", "program"] }
 
 actix-web = "4"
 actix-web-prom = { version = "0.6.0", git = "https://github.com/riordanp/actix-web-prom.git", branch = "exclude-paths" }
