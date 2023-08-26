@@ -95,7 +95,7 @@ fn combine_fills_into_1m_candles(
         None => {
             let first = fills_iter.peek().unwrap();
             let (price, _) =
-                calculate_fill_price_and_size(*first, market.base_decimals, market.quote_decimals);
+                calculate_fill_price_and_size(first, market.base_decimals, market.quote_decimals);
             price
         }
     };

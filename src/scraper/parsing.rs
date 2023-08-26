@@ -164,7 +164,7 @@ fn try_parse_new_market(
         OptionSerializer::None => {}
         OptionSerializer::Skip => {}
     }
-    if markets_vector.len() == 0 {
+    if markets_vector.is_empty() {
         None
     } else {
         Some(markets_vector)
@@ -185,8 +185,8 @@ fn parse_market_from_data(data: String, block_time: i64) -> Option<OpenBookMarke
         Ok(e) => {
             let datetime = to_timestampz(block_time as u64);
             let new_market = OpenBookMarketMetadata::from_event(e, datetime);
-            return Some(new_market);
+            Some(new_market)
         }
-        _ => return None,
+        _ => None,
     }
 }

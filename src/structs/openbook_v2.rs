@@ -112,16 +112,16 @@ impl OpenBookFill {
             seq_num: log.seq_num,
             maker: log.maker.to_string(),
             maker_client_order_id: log.maker_client_order_id,
-            maker_fee: ui_quote_quantity(maker_fees_quote_lots, &market),
+            maker_fee: ui_quote_quantity(maker_fees_quote_lots, market),
             maker_datetime: to_timestampz(log.maker_timestamp),
             taker: log.taker.to_string(),
             taker_client_order_id: log.taker_client_order_id,
-            taker_fee: ui_quote_quantity(taker_fees_quote_lots, &market),
+            taker_fee: ui_quote_quantity(taker_fees_quote_lots, market),
             taker_side: log.taker_side,
             maker_slot: log.maker_slot,
             maker_out: log.maker_out,
-            price: ui_price(log.price, &market),
-            quantity: ui_base_quantity(log.quantity, &market),
+            price: ui_price(log.price, market),
+            quantity: ui_base_quantity(log.quantity, market),
         }
     }
 

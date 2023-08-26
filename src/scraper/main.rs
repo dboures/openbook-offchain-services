@@ -1,21 +1,20 @@
-use log::{error, info};
+
 use openbook_candles::database::fetch::fetch_active_markets;
-use openbook_candles::database::insert::build_fills_upsert_statement;
-use openbook_candles::scraper::parsing::try_parse_openbook_fills_from_logs;
+
+
 use openbook_candles::scraper::scrape::{scrape_signatures, scrape_transactions};
-use openbook_candles::structs::markets::{fetch_market_infos, load_markets};
+
 use openbook_candles::structs::openbook_v2::OpenBookMarketMetadata;
 use openbook_candles::structs::transaction::NUM_TRANSACTION_PARTITIONS;
-use openbook_candles::utils::{AnyhowWrap, Config};
+
 use openbook_candles::worker::metrics::{
-    serve_metrics, METRIC_DB_POOL_AVAILABLE, METRIC_DB_POOL_SIZE,
+    serve_metrics,
 };
 use openbook_candles::{
     database::initialize::{connect_to_database, setup_database},
-    worker::candle_batching::batch_for_market,
 };
-use std::env;
-use std::{collections::HashMap, str::FromStr, time::Duration as WaitDuration};
+
+use std::{collections::HashMap};
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 10)]
 async fn main() -> anyhow::Result<()> {
