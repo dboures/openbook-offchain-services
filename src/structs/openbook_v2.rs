@@ -2,6 +2,8 @@ use crate::utils::{to_timestampz, OPENBOOK_KEY};
 use anchor_lang::prelude::*;
 use chrono::{DateTime, Utc};
 use num_traits::Pow;
+use serde::ser::SerializeStruct;
+
 use tokio_postgres::Row;
 
 pub const FEES_SCALE_FACTOR: i128 = 1_000_000;
@@ -19,6 +21,27 @@ pub struct OpenBookMarketMetadata {
     pub base_lot_size: i64,
     pub quote_lot_size: i64,
     pub scraper_active: bool,
+}
+
+impl serde::Serialize for OpenBookMarketMetadata {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("OpenBookMarketMetadata", 2)?;
+        state.serialize_field("creation_datetime", &self.creation_datetime.to_rfc3339())?;
+        state.serialize_field("program_pk", &self.program_pk)?;
+        state.serialize_field("market_pk", &self.market_pk)?;
+        state.serialize_field("market_name", &self.market_name)?;
+        state.serialize_field("base_mint", &self.base_mint)?;
+        state.serialize_field("quote_mint", &self.quote_mint)?;
+        state.serialize_field("base_decimals", &self.base_decimals)?;
+        state.serialize_field("quote_decimals", &self.quote_decimals)?;
+        state.serialize_field("base_lot_size", &self.base_lot_size)?;
+        state.serialize_field("quote_lot_size", &self.quote_lot_size)?;
+        state.serialize_field("scraper_active", &self.scraper_active)?;
+        state.end()
+    }
 }
 impl OpenBookMarketMetadata {
     pub fn from_event(log: MarketMetaDataLog, block_datetime: DateTime<Utc>) -> Self {

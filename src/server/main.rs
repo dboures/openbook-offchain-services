@@ -11,11 +11,9 @@ use prometheus::Registry;
 
 use markets::get_markets;
 use openbook_offchain_services::{
-    database::initialize::connect_to_database,
-    structs::markets::{fetch_market_infos, load_markets},
-    utils::{Config, WebContext},
+    database::{fetch::fetch_active_markets, initialize::connect_to_database},
+    utils::WebContext,
 };
-use std::env;
 use std::thread;
 use traders::{get_top_traders_by_base_volume, get_top_traders_by_quote_volume};
 
@@ -30,29 +28,22 @@ async fn main() -> std::io::Result<()> {
     dotenv::dotenv().ok();
     env_logger::init();
 
-    let args: Vec<String> = env::args().collect();
-    assert!(args.len() == 2);
-    let path_to_markets_json = &args[1];
     let rpc_url: String = dotenv::var("RPC_URL").unwrap();
     let bind_addr: String = dotenv::var("SERVER_BIND_ADDR").expect("reading bind addr from env");
 
-    let config = Config {
-        rpc_url: rpc_url.clone(),
-    };
-
-    let markets = load_markets(path_to_markets_json);
-    let market_infos = fetch_market_infos(&config, markets).await.unwrap();
     let pool = connect_to_database().await.unwrap();
+    let markets = fetch_active_markets(&pool).await.unwrap();
 
     let registry = Registry::new();
     // For serving metrics on a private port
-    let private_metrics = PrometheusMetricsBuilder::new("openbook_offchain_services_server_private")
-        .registry(registry.clone())
-        .exclude("/metrics")
-        .exclude_status(StatusCode::NOT_FOUND)
-        .endpoint("/metrics")
-        .build()
-        .unwrap();
+    let private_metrics =
+        PrometheusMetricsBuilder::new("openbook_offchain_services_server_private")
+            .registry(registry.clone())
+            .exclude("/metrics")
+            .exclude_status(StatusCode::NOT_FOUND)
+            .endpoint("/metrics")
+            .build()
+            .unwrap();
     // For collecting metrics on the public api, excluding 404s
     let public_metrics = PrometheusMetricsBuilder::new("openbook_offchain_services_server")
         .registry(registry)
@@ -63,7 +54,7 @@ async fn main() -> std::io::Result<()> {
     let context = Data::new(WebContext {
         rpc_url,
         pool,
-        markets: market_infos,
+        markets,
     });
 
     println!("Starting server");

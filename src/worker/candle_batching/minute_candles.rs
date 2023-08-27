@@ -17,7 +17,10 @@ use crate::{
     utils::{f64_max, f64_min, AnyhowWrap},
 };
 
-pub async fn batch_1m_candles(pool: &Pool, market: &OpenBookMarketMetadata) -> anyhow::Result<Vec<Candle>> {
+pub async fn batch_1m_candles(
+    pool: &Pool,
+    market: &OpenBookMarketMetadata,
+) -> anyhow::Result<Vec<Candle>> {
     let market_name = &market.market_name;
     let market_pk = &market.market_pk;
     let latest_candle = fetch_latest_finished_candle(pool, market_name, Resolution::R1m).await?;

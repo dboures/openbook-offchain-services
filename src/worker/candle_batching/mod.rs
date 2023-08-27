@@ -9,7 +9,7 @@ use tokio::time::sleep;
 
 use crate::{
     database::insert::build_candles_upsert_statement,
-    structs::{candle::Candle, resolution::Resolution, openbook_v2::OpenBookMarketMetadata},
+    structs::{candle::Candle, openbook_v2::OpenBookMarketMetadata, resolution::Resolution},
     utils::AnyhowWrap,
     worker::candle_batching::minute_candles::batch_1m_candles,
 };

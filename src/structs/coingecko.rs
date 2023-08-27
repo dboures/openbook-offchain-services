@@ -39,8 +39,14 @@ pub struct PgCoinGecko24HourVolume {
     pub quote_size: f64,
 }
 impl PgCoinGecko24HourVolume {
-    pub fn convert_to_readable(&self, markets: &Vec<OpenBookMarketMetadata>) -> CoinGecko24HourVolume {
-        let market = markets.iter().find(|m| m.market_pk == self.address).unwrap();
+    pub fn convert_to_readable(
+        &self,
+        markets: &Vec<OpenBookMarketMetadata>,
+    ) -> CoinGecko24HourVolume {
+        let market = markets
+            .iter()
+            .find(|m| m.market_pk == self.address)
+            .unwrap();
         CoinGecko24HourVolume {
             market_name: market.market_name.clone(),
             base_volume: self.base_size,

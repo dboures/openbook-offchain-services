@@ -1,9 +1,9 @@
 use crate::structs::{
     candle::Candle,
     coingecko::{PgCoinGecko24HighLow, PgCoinGecko24HourVolume},
-    openbook_v2::{OpenBookMarketMetadata, OpenBookFill},
+    openbook_v2::{OpenBookFill, OpenBookMarketMetadata},
     resolution::Resolution,
-    trader::PgTrader,
+    trader::Trader,
     transaction::PgTransaction,
 };
 use chrono::{DateTime, Utc};
@@ -189,77 +189,96 @@ pub async fn fetch_candles_from(
     Ok(rows.into_iter().map(Candle::from_row).collect())
 }
 
-pub async fn fetch_top_traders_by_base_volume_from( //TODO
+pub async fn fetch_top_traders_by_base_volume_from(
     pool: &Pool,
     market_address_string: &str,
     start_time: DateTime<Utc>,
     end_time: DateTime<Utc>,
-) -> anyhow::Result<Vec<PgTrader>> {
+) -> anyhow::Result<Vec<Trader>> {
     let client = pool.get().await?;
 
-    let stmt = r#"SELECT 
-            open_orders_owner, 
-            sum(
-            native_qty_paid * CASE bid WHEN true THEN 0 WHEN false THEN 1 END
-            ) as "raw_ask_size!",
-            sum(
-            native_qty_received * CASE bid WHEN true THEN 1 WHEN false THEN 0 END
-            ) as "raw_bid_size!"
-        FROM fills
-    WHERE  market = $1
-            AND time >= $2
-            AND time < $3
-    GROUP  BY open_orders_owner
-    ORDER  BY 
-        sum(native_qty_paid * CASE bid WHEN true THEN 0 WHEN false THEN 1 END) 
-        + 
-        sum(native_qty_received * CASE bid WHEN true THEN 1 WHEN false THEN 0 END) 
-    DESC 
-    LIMIT 10000"#;
+    let stmt = r#"
+            SELECT
+            trader,
+            SUM(quantity) AS total_quantity
+        FROM (
+            SELECT
+                maker AS trader,
+                quantity
+            FROM
+                fills
+            WHERE  market_pk = $1
+                AND block_datetime >= $2
+                AND block_datetime < $3
+            UNION ALL
+            SELECT
+                taker AS trader,
+                quantity
+            FROM
+                fills
+            WHERE  market_pk = $1
+                AND block_datetime >= $2
+                AND block_datetime < $3
+        ) AS all_trades
+        GROUP BY
+            trader
+        ORDER BY
+            total_quantity DESC
+        LIMIT 1000"#;
 
     let rows = client
         .query(stmt, &[&market_address_string, &start_time, &end_time])
         .await?;
 
-    Ok(rows.into_iter().map(PgTrader::from_row).collect())
+    Ok(rows.into_iter().map(Trader::from_row).collect())
 }
 
-pub async fn fetch_top_traders_by_quote_volume_from( //TODO
+pub async fn fetch_top_traders_by_quote_volume_from(
     pool: &Pool,
     market_address_string: &str,
     start_time: DateTime<Utc>,
     end_time: DateTime<Utc>,
-) -> anyhow::Result<Vec<PgTrader>> {
+) -> anyhow::Result<Vec<Trader>> {
     let client = pool.get().await?;
 
-    let stmt = r#"SELECT 
-            open_orders_owner, 
-            sum(
-                native_qty_received * CASE bid WHEN true THEN 0 WHEN false THEN 1 END
-            ) as "raw_ask_size!",
-            sum(
-                native_qty_paid * CASE bid WHEN true THEN 1 WHEN false THEN 0 END
-            ) as "raw_bid_size!"
-          FROM fills
-     WHERE  market = $1
-            AND time >= $2
-            AND time < $3
-     GROUP  BY open_orders_owner
-     ORDER  BY 
-        sum(native_qty_received * CASE bid WHEN true THEN 0 WHEN false THEN 1 END) 
-        + 
-        sum(native_qty_paid * CASE bid WHEN true THEN 1 WHEN false THEN 0 END) 
-    DESC  
-    LIMIT 10000"#;
+    let stmt = r#"
+            SELECT
+            trader,
+            SUM(quantity) AS total_quantity
+        FROM (
+            SELECT
+                maker AS trader,
+                price * quantity as quantity
+            FROM
+                fills
+            WHERE  market_pk = $1
+                AND block_datetime >= $2
+                AND block_datetime < $3
+            UNION ALL
+            SELECT
+                taker AS trader,
+                price * quantity as quantity
+            FROM
+                fills
+            WHERE  market_pk = $1
+                AND block_datetime >= $2
+                AND block_datetime < $3
+        ) AS all_trades
+        GROUP BY
+            trader
+        ORDER BY
+            total_quantity DESC
+        LIMIT 1000"#;
 
     let rows = client
         .query(stmt, &[&market_address_string, &start_time, &end_time])
         .await?;
 
-    Ok(rows.into_iter().map(PgTrader::from_row).collect())
+    Ok(rows.into_iter().map(Trader::from_row).collect())
 }
 
-pub async fn fetch_coingecko_24h_volume( //TODO
+pub async fn fetch_coingecko_24h_volume(
+    //TODO
     pool: &Pool,
     market_address_strings: &Vec<&str>,
 ) -> anyhow::Result<Vec<PgCoinGecko24HourVolume>> {
@@ -290,7 +309,7 @@ pub async fn fetch_coingecko_24h_volume( //TODO
         .collect())
 }
 
-pub async fn fetch_coingecko_24h_high_low( //TODO
+pub async fn fetch_coingecko_24h_high_low(
     pool: &Pool,
     market_names: &Vec<&str>,
 ) -> anyhow::Result<Vec<PgCoinGecko24HighLow>> {

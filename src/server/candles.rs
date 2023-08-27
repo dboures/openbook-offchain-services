@@ -1,6 +1,8 @@
 use openbook_offchain_services::{
     database::fetch::fetch_candles_from,
-    structs::{markets::valid_market, resolution::Resolution, tradingview::TvResponse},
+    structs::{
+        openbook_v2::OpenBookMarketMetadata, resolution::Resolution, tradingview::TvResponse,
+    },
     utils::{to_timestampz, WebContext},
 };
 
@@ -41,4 +43,8 @@ pub async fn get_candles(
         };
 
     Ok(HttpResponse::Ok().json(TvResponse::candles_to_tv(candles)))
+}
+
+fn valid_market(market_name: &str, markets: &Vec<OpenBookMarketMetadata>) -> bool {
+    markets.iter().any(|x| x.market_name == market_name)
 }

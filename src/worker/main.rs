@@ -1,10 +1,8 @@
 use log::{error, info};
 use openbook_offchain_services::database::fetch::fetch_active_markets;
 use openbook_offchain_services::scraper::scrape::{scrape_signatures, scrape_transactions};
-use openbook_offchain_services::structs::markets::{fetch_market_infos, load_markets};
 use openbook_offchain_services::structs::openbook_v2::OpenBookMarketMetadata;
 use openbook_offchain_services::structs::transaction::NUM_TRANSACTION_PARTITIONS;
-use openbook_offchain_services::utils::Config;
 use openbook_offchain_services::worker::metrics::{
     serve_metrics, METRIC_DB_POOL_AVAILABLE, METRIC_DB_POOL_SIZE,
 };
@@ -12,9 +10,7 @@ use openbook_offchain_services::{
     database::initialize::{connect_to_database, setup_database},
     worker::candle_batching::batch_for_market,
 };
-use solana_sdk::pubkey::Pubkey;
-use std::env;
-use std::{collections::HashMap, str::FromStr, time::Duration as WaitDuration};
+use std::{collections::HashMap, time::Duration as WaitDuration};
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 10)]
 async fn main() -> anyhow::Result<()> {

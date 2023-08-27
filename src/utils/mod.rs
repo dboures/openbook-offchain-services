@@ -4,7 +4,7 @@ use deadpool_postgres::Pool;
 use serde_derive::Deserialize;
 use solana_sdk::pubkey;
 
-use crate::structs::markets::MarketInfo;
+use crate::structs::openbook_v2::OpenBookMarketMetadata;
 
 pub const OPENBOOK_KEY: Pubkey = pubkey!("opnbkNkqux64GppQhwbyEVc3axhssFhVYuwar8rDHCu");
 
@@ -46,7 +46,7 @@ pub struct Config {
 
 pub struct WebContext {
     pub rpc_url: String,
-    pub markets: Vec<MarketInfo>,
+    pub markets: Vec<OpenBookMarketMetadata>,
     pub pool: Pool,
 }
 
