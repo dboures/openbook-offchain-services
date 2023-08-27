@@ -1,10 +1,7 @@
 pub mod candle;
 pub mod coingecko;
-pub mod markets;
-pub mod openbook;
 pub mod openbook_v2;
 pub mod resolution;
-pub mod slab;
 pub mod trader;
 pub mod tradingview;
 pub mod transaction;

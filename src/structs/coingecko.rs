@@ -1,7 +1,7 @@
 use serde::Serialize;
 use tokio_postgres::Row;
 
-use super::markets::MarketInfo;
+use super::openbook_v2::OpenBookMarketMetadata;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct CoinGeckoOrderBook {
@@ -39,10 +39,10 @@ pub struct PgCoinGecko24HourVolume {
     pub quote_size: f64,
 }
 impl PgCoinGecko24HourVolume {
-    pub fn convert_to_readable(&self, markets: &Vec<MarketInfo>) -> CoinGecko24HourVolume {
-        let market = markets.iter().find(|m| m.address == self.address).unwrap();
+    pub fn convert_to_readable(&self, markets: &Vec<OpenBookMarketMetadata>) -> CoinGecko24HourVolume {
+        let market = markets.iter().find(|m| m.market_pk == self.address).unwrap();
         CoinGecko24HourVolume {
-            market_name: market.name.clone(),
+            market_name: market.market_name.clone(),
             base_volume: self.base_size,
             target_volume: self.quote_size,
         }
